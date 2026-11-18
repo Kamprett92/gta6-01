@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solmar Heat — an open-world crime story</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #10141a; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .hidden { display: none !important; }
+
+  /* ---- HUD ---- */
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #eef1f5; z-index: 5; }
+  .panel { background: rgba(12, 16, 22, 0.62); border: 1px solid rgba(255,255,255,0.14); border-radius: 10px; backdrop-filter: blur(2px); }
+  #hud-left { position: absolute; top: 14px; left: 14px; padding: 10px 14px; min-width: 210px; }
+  #hud-cash { font-size: 26px; font-weight: 800; letter-spacing: 0.5px; color: #f2c94c; }
+  #hud-stars { margin-top: 4px; font-size: 20px; letter-spacing: 3px; }
+  #hud-stars .star { color: rgba(255,255,255,0.22); }
+  #hud-stars .star.lit { color: #ffcf3f; text-shadow: 0 0 8px rgba(255, 180, 40, 0.8); }
+  #hud-health { margin-top: 8px; height: 10px; background: rgba(255,255,255,0.16); border-radius: 5px; overflow: hidden; }
+  #hud-health-fill { height: 100%; width: 100%; background: #37d67a; border-radius: 5px; transition: width 0.2s; }
+  #hud-health-label { font-size: 11px; color: #c8ccd4; margin-top: 3px; letter-spacing: 1px; }
+
+  #hud-mission-box { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; padding: 8px 22px; max-width: 46vw; }
+  #hud-mission { font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #f2c94c; }
+  #hud-objective { font-size: 16px; margin-top: 2px; }
+  #hud-timer { font-size: 22px; font-weight: 800; color: #ff8a7a; margin-top: 2px; }
+
+  #minimap-wrap { position: absolute; top: 14px; right: 14px; padding: 6px; }
+  #minimap { display: block; width: 180px; height: 180px; border-radius: 6px; }
+
+  #hud-speed { position: absolute; right: 16px; bottom: 16px; font-size: 26px; font-weight: 800; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
+  #hud-ammo { position: absolute; right: 16px; bottom: 52px; font-size: 15px; color: #c8ccd4; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
+  #hud-prompt { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); padding: 8px 18px; font-size: 15px; white-space: nowrap; }
+  #hud-hint { position: absolute; left: 16px; bottom: 16px; font-size: 12px; color: #c8ccd4; text-shadow: 0 1px 4px rgba(0,0,0,0.7); line-height: 1.6; }
+  #hud-banner { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%) scale(0.96); font-size: 34px; font-weight: 900; letter-spacing: 1px; text-align: center; color: #fff; text-shadow: 0 3px 14px rgba(0,0,0,0.75); opacity: 0; transition: opacity 0.25s, transform 0.25s; max-width: 80vw; }
+  #hud-banner.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  #hud-crosshair { position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: rgba(255,255,255,0.9); box-shadow: 0 0 0 2px rgba(0,0,0,0.45); }
+
+  /* ---- Overlays ---- */
+  .overlay { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, rgba(8,12,18,0.25) 0%, rgba(8,12,18,0.72) 78%); color: #eef1f5; }
+  .card { text-align: center; max-width: 620px; padding: 34px 44px; background: rgba(10, 14, 20, 0.78); border: 1px solid rgba(255,255,255,0.16); border-radius: 16px; box-shadow: 0 18px 60px rgba(0,0,0,0.5); }
+  .card h1 { margin: 0; font-size: 54px; font-weight: 900; letter-spacing: 3px; color: #ffb03a; text-shadow: 0 4px 0 rgba(120,40,0,0.55), 0 10px 30px rgba(0,0,0,0.6); }
+  .card h1 .thin { color: #eef1f5; font-weight: 300; }
+  .card h2 { margin: 6px 0 0; font-size: 15px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase; color: #9fd8ef; }
+  .card p { font-size: 15px; line-height: 1.65; color: #d6dae0; margin: 16px 0; }
+  .card .controls { font-size: 13px; line-height: 1.9; color: #b9bec7; background: rgba(255,255,255,0.06); border-radius: 10px; padding: 10px 16px; margin: 0 0 20px; text-align: left; display: inline-block; }
+  .card .controls b { color: #f2c94c; }
+  .btn { display: inline-block; margin: 4px 6px; padding: 12px 26px; font-size: 16px; font-weight: 700; color: #1a1206; background: #f2c94c; border: none; border-radius: 10px; cursor: pointer; box-shadow: 0 4px 0 #a67c14; }
+  .btn:hover { background: #ffd968; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #a67c14; }
+  .btn.ghost { background: rgba(255,255,255,0.12); color: #eef1f5; box-shadow: 0 4px 0 rgba(255,255,255,0.18); }
+  .btn.ghost:hover { background: rgba(255,255,255,0.2); }
+  #over-title { color: #ff6a5e; }
+  .fine { font-size: 13px; color: #8b93a3; margin-top: 18px; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="game" aria-label="Solmar Heat: an open-world crime game in the coastal city of Solmar Bay"></canvas>
+<p id="status" role="status" aria-live="polite"></p>
+
+<div id="hud">
+  <div id="hud-left" class="panel">
+    <div id="hud-cash">$100</div>
+    <div id="hud-stars"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></div>
+    <div id="hud-health"><div id="hud-health-fill"></div></div>
+    <div id="hud-health-label">HEALTH</div>
+  </div>
+  <div id="hud-mission-box" class="panel">
+    <div id="hud-mission">Free Roam</div>
+    <div id="hud-objective"></div>
+    <div id="hud-timer"></div>
+  </div>
+  <div id="minimap-wrap" class="panel"><canvas id="minimap" width="180" height="180"></canvas></div>
+  <div id="hud-speed"></div>
+  <div id="hud-ammo"></div>
+  <div id="hud-prompt" class="panel"></div>
+  <div id="hud-hint">WASD move / drive &nbsp;·&nbsp; Mouse orbit<br>E enter car &nbsp;·&nbsp; Click shoot &nbsp;·&nbsp; F punch<br>Space handbrake &nbsp;·&nbsp; P pause &nbsp;·&nbsp; M mute</div>
+  <div id="hud-banner"></div>
+  <div id="hud-crosshair"></div>
+</div>
+
+<div id="screen-title" class="overlay">
+  <div class="card">
+    <h1>SOLMAR <span class="thin">HEAT</span></h1>
+    <h2>An open-world crime story</h2>
+    <p>Solmar Bay — sun, sea, and trouble. Rico Marín is a getaway driver with no car
+    and a fixer, Lena Cruz, who has five jobs for him. Steal a ride, lose the cops,
+    run the packages, and pull the big score at the Solmar Bank.</p>
+    <div class="controls">
+      <b>WASD / arrows</b> — walk &amp; drive &nbsp;·&nbsp; <b>Mouse</b> — look around<br>
+      <b>E</b> — steal / enter a car &nbsp;·&nbsp; <b>Click</b> — shoot &nbsp;·&nbsp; <b>F</b> — punch<br>
+      <b>Space</b> — handbrake &nbsp;·&nbsp; <b>Shift</b> — run &nbsp;·&nbsp; <b>P</b> — pause &nbsp;·&nbsp; <b>M</b> — mute
+    </div>
+    <div>
+      <button id="btn-new" class="btn" type="button">New game</button>
+      <button id="btn-continue" class="btn ghost hidden" type="button">Continue</button>
+    </div>
+    <div class="fine">A fully original game — its city, people, cars and story are all its own.<br>Progress saves in this browser.</div>
+  </div>
+</div>
+
+<div id="screen-pause" class="overlay hidden">
+  <div class="card">
+    <h1>Paused</h1>
+    <p>The city waits for you.</p>
+    <div>
+      <button id="btn-resume" class="btn" type="button">Resume</button>
+      <button id="btn-save" class="btn ghost" type="button">Save game</button>
+    </div>
+    <div>
+      <button id="btn-restart" class="btn ghost" type="button">Restart</button>
+      <button id="btn-mute" class="btn ghost" type="button">Mute (M)</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-over" class="overlay hidden">
+  <div class="card">
+    <h1 id="over-title">Busted!</h1>
+    <p id="over-text"></p>
+    <div>
+      <button id="btn-retry" class="btn" type="button">Back to the streets</button>
+      <button id="btn-title" class="btn ghost" type="button">Title screen</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
